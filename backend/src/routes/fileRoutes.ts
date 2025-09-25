@@ -2,8 +2,10 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { PrismaClient } from "@prisma/client";
 
 const router = Router();
+const prisma = new PrismaClient();
 
 // Criar pasta uploads se não existir
 const uploadDir = path.join(__dirname, "../uploads");
@@ -22,25 +24,48 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 🔹 Upload
-router.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+// 🔹 Upload e guardar no DB
+router.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-  res.json({
-    id: Date.now().toString(),
-    name: req.file.originalname,
-    path: req.file.filename,
-    size: req.file.size,
-    type: req.file.mimetype,
-    date: new Date().toISOString(),
-  });
+    console.log("Saving file:", {
+      name: req.file.originalname,
+      path: req.file.filename,
+      size: req.file.size,
+      type: req.file.mimetype,
+    });
+
+    const file = await prisma.file.create({
+      data: {
+        name: req.file.originalname,
+        path: req.file.filename,
+        size: req.file.size,
+        type: req.file.mimetype,
+      },
+    });
+
+    console.log("File saved:", file);
+
+    return res.json(file);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error saving file to database" });
+  }
 });
 
-// 🔹 Listagem mock (depois vem da DB)
-router.get("/", (req, res) => {
-  res.json([
-    { id: "1", name: "mock-foto.jpg", date: "2025-08-28", type: "image" },
-  ]);
+// 🔹 Listar ficheiros da DB
+router.get("/", async (req, res) => {
+  try {
+    const files = await prisma.file.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    console.log(files);
+    return res.json(files);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error fetching files" });
+  }
 });
 
 export default router;

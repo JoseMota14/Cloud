@@ -1,34 +1,46 @@
 import { create } from "zustand";
+import { getFiles, uploadFile } from "../api";
 
-// 🔹 Tipos
-export interface FileItem {
+interface FileData {
   id: string;
   name: string;
-  date: string;
-  type: string; // "image" | "video" | "doc" | etc.
-  size?: number;
+  type: string;
+  size: number;
+  path: string;
+  createdAt: string;
 }
 
 interface FileStore {
-  files: FileItem[];
-  addFile: (file: FileItem) => void;
-  removeFile: (id: string) => void;
-  setFiles: (files: FileItem[]) => void;
+  files: FileData[];
+  loading: boolean;
+  error?: string;
+  fetchFiles: () => Promise<void>;
+  addFile: (file: File) => Promise<void>;
 }
 
-// 🔹 Store Zustand
 export const useFileStore = create<FileStore>((set) => ({
   files: [],
-
-  addFile: (file) =>
-    set((state) => ({
-      files: [...state.files, file],
-    })),
-
-  removeFile: (id) =>
-    set((state) => ({
-      files: state.files.filter((f) => f.id !== id),
-    })),
-
-  setFiles: (files) => set(() => ({ files })),
+  loading: false,
+  fetchFiles: async () => {
+    set({ loading: true, error: undefined });
+    try {
+      const files = await getFiles();
+      set({ files });
+    } catch (e: any) {
+      set({ error: e.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
+  addFile: async (file: File) => {
+    set({ loading: true, error: undefined });
+    try {
+      const newFile = await uploadFile(file);
+      set((state) => ({ files: [newFile, ...state.files] }));
+    } catch (e: any) {
+      set({ error: e.message });
+    } finally {
+      set({ loading: false });
+    }
+  },
 }));

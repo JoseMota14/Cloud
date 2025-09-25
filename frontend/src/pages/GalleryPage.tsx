@@ -1,19 +1,39 @@
-import React from "react";
+import React, { useEffect } from "react";
 import FileCard from "../components/FileCard";
+import { useFileStore } from "../store/useFileStore";
+import Card from "../components/Card";
+import styled from "styled-components";
 
-const mockFiles = [
-  { name: "foto1.jpg", date: "2025-08-28" },
-  { name: "video.mp4", date: "2025-08-20" },
-  { name: "document.pdf", date: "2025-08-15" },
-];
+const CardGallery = styled.div`
+  display: grid;
+  grid-template-columns: 1fr; /* default mobile: 1 column */
+  gap: 16px;
+  padding: 20px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr; /* desktop: 2 columns */
+  }
+`;
 
 export default function GalleryPage() {
+  const { files, fetchFiles, loading } = useFileStore();
+
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
+
+  if (loading) return <p>Loading...</p>;
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Galeria</h1>
-      {mockFiles.map((f, i) => (
-        <FileCard key={i} file={f} />
+    <CardGallery>
+      {files.map((file) => (
+        <Card
+          key={file.id}
+          name={file.name}
+          createdAt={file.createdAt}
+          type={"pdf"}
+        />
       ))}
-    </div>
+    </CardGallery>
   );
 }
